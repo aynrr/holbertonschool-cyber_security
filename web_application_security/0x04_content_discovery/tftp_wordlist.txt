@@ -1,0 +1,16 @@
+config
+config.txt
+startup-config
+running-config
+backup
+backup.cfg
+backup.txt
+flag
+flag.txt
+secret
+secret.txt
+pxelinux.0
+boot.img
+vmlinuz
+initrd.img
+
