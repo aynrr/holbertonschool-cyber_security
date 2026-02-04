@@ -1,3 +1,2 @@
 #!/bin/bash
-john --format=Raw-MD5 --wordlist=/usr/share/wordlists/rockyou.txt "$1"
-john --format=Raw-MD5 --show "$1" | cut -d: -f2 | grep -v "password hashes cracked" | grep . > 4-password.txt
+john --wordlist=/usr/share/wordlists/rockyou.txt --format=Raw-MD5 "$1" && john --show --format=Raw-MD5 "$1" | awk -F: '{print $2}' | grep -v '^$' > 4-password.txt
