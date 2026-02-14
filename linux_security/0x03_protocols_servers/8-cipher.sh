@@ -1,2 +1,2 @@
 #!/bin/bash
-nmap -p 443 --script -ssl-enum-ciphres "$1"
+nmap -p 443 --script ssl-enum-ciphers "$1"
