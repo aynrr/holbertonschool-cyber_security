@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+
 class CaesarCipher
   def initialize(shift)
     @shift = shift
@@ -14,18 +15,16 @@ class CaesarCipher
 
   private
 
-  def cipher(message, shift_value)
+  def cipher(message, shift)
     result = ""
 
     message.each_char do |char|
-      if char.match?(/[a-z]/)
-        base = 97
-        shifted_char = ((char.ord - base + shift_value) % 26 + base).chr
-        result += shifted_char
-      elsif char.match?(/[A-Z]/)
-        base = 65
-        shifted_char = ((char.ord - base + shift_value) % 26 + base).chr
-        result += shifted_char
+      if char >= 'A' && char <= 'Z'
+        base = 'A'.ord
+        result += ((char.ord - base + shift) % 26 + base).chr
+      elsif char >= 'a' && char <= 'z'
+        base = 'a'.ord
+        result += ((char.ord - base + shift) % 26 + base).chr
       else
         result += char
       end
