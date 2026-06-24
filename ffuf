@@ -1,0 +1,40 @@
+1. Hazırlıq (Port Siyahısı)
+İlk növbədə bizə yoxlamaq istədiyimiz portların siyahısı (wordlist) lazımdır. Əgər sisteminizdə yoxdursa, ən populyar portlardan ibarət sadə bir mətn faylı (ports.txt) yarada bilərsiniz:
+
+Plaintext
+80
+443
+8080
+3306
+6379
+22
+81
+2. ffuf Komandasının Yazılışı
+Tutaq ki, hədəf saytımız http://hedef-sayt.com/view?url= formasındadır və biz SSRF vasitəsilə bu serverin daxilində (127.0.0.1) hansı portların açıq olduğunu tapmaq istəyirik.
+
+Komandanı terminalda bu şəkildə yazırıq:
+
+Bash
+ffuf -u "http://hedef-sayt.com/view?url=http://127.0.0.1:FUZZ" -w ports.txt
+Parametrlərin mənası:
+
+-u: Hədəf URL-i daxil edirsiniz. Diqqət edin ki, FUZZ sözünü portun yazılmalı olduğu yerə qoyuruq.
+
+-w: Port siyahımızın olduğu faylı (ports.txt) göstəririk. ffuf avtomatik olaraq bu fayldakı hər sətri oxuyub FUZZ sözü ilə əvəzləyəcək.
+
+3. Nəticələrin Analizi (Ən Kritik Hissə)
+Skan zamanı ffuf sizə hər port üçün cavabın ölçüsünü (Size), söz sayını (Words) və status kodunu (Status) göstərəcək.
+
+Daxili port skanında adətən bağlı portlar və açıq portlar fərqli cavablar qaytarır. Məsələn:
+
+Bağlı portlar: Server Connection refused və ya boş səhifə qaytarır (Məsələn, Cavab ölçüsü: 512 bytes).
+
+Açıq portlar: Server fərqli bir kontent və ya xəta mesajı qaytarır (Məsələn, Cavab ölçüsü: 1024 bytes və ya 0 bytes).
+
+Bütün bağlı portlar eyni ölçüdə cavab qaytaracağı üçün, biz fərqli olanı axtarmalıyıq. Səs-küyü (eyni cavabları) gizlətmək üçün filtrlərdən istifadə edirik:
+
+Əgər bağlı portlar 512 bayt ölçüsündə cavab verirsə, onları gizlətmək üçün -fs 512 (Filter Size) əlavə edirik:
+
+Bash
+ffuf -u "http://hedef-sayt.com/view?url=http://127.0.0.1:FUZZ" -w ports.txt -fs 512
+Və ya ekrana yalnız status kodu 200 olanları çıxarmaq üçün -mc 200 (Match Code) istifadə edə bilərsiniz.
